@@ -1,66 +1,137 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useState, FormEvent } from "react";
+
+interface TailorResult {
+  tailoredResume: string;
+  coverLetter: string;
+}
+
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function ResultCard({ title, content, filename }: { title: string; content: string; filename: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className="result-card">
+      <div className="result-card-header">
+        <h2>{title}</h2>
+        <div className="result-actions">
+          <button type="button" onClick={handleCopy}>
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          <button type="button" onClick={() => downloadText(filename, content)}>
+            Download .txt
+          </button>
+        </div>
+      </div>
+      <div className="result-content">{content}</div>
+    </div>
+  );
+}
 
 export default function Home() {
+  const [jobDescription, setJobDescription] = useState("");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<TailorResult | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setResult(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    if (!(formData.get("resume") as File)?.size) {
+      setError("Upload a resume file first.");
+      return;
+    }
+    if (!jobDescription.trim()) {
+      setError("Paste the job description first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/tailor", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Something went wrong.");
+      }
+      setResult(data as TailorResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main>
+      <header>
+        <h1>Resume Tailor</h1>
+        <p>Upload your resume, paste a job description, and get a tailored resume plus a cover letter.</p>
+      </header>
+
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="resume">
+            Master resume <span className="field-hint">PDF, DOCX, or TXT</span>
+          </label>
+          <input
+            id="resume"
+            name="resume"
+            type="file"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+          />
+          {fileName && <p className="field-hint">Selected: {fileName}</p>}
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div>
+          <label htmlFor="jobDescription">Job description</label>
+          <textarea
+            id="jobDescription"
+            name="jobDescription"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            placeholder="Paste the full job posting here..."
+          />
         </div>
-      </main>
-    </div>
+
+        {error && <p className="error">{error}</p>}
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Tailoring..." : "Tailor my resume"}
+        </button>
+      </form>
+
+      {result && (
+        <div className="results">
+          <ResultCard title="Tailored Resume" content={result.tailoredResume} filename="tailored-resume.txt" />
+          <ResultCard title="Cover Letter" content={result.coverLetter} filename="cover-letter.txt" />
+        </div>
+      )}
+    </main>
   );
 }
