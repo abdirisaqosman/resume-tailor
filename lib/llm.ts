@@ -3,8 +3,23 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { TAILOR_OUTPUT_SCHEMA } from "./prompts";
 
+export interface ResumeEntry {
+  title: string;
+  subtitle: string;
+  bullets: string[];
+}
+
+export interface ResumeSection {
+  heading: string;
+  entries: ResumeEntry[];
+}
+
 export interface TailorResult {
-  tailoredResume: string;
+  name: string;
+  title: string;
+  contact: string;
+  summary: string;
+  sections: ResumeSection[];
   coverLetter: string;
 }
 
@@ -13,7 +28,7 @@ async function tailorWithAnthropic(system: string, userPrompt: string): Promise<
 
   const response = await client.messages.create({
     model: "claude-opus-4-8",
-    max_tokens: 4096,
+    max_tokens: 8192,
     system,
     output_config: {
       format: {

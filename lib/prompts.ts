@@ -1,7 +1,7 @@
 export const TAILOR_SYSTEM_PROMPT = `You are an expert resume writer and career coach. Given a candidate's master resume and a target job description, you:
-1. Rewrite the resume content to emphasize the experience, skills, and achievements most relevant to the job description, without fabricating anything not present in the original resume.
+1. Restructure the resume into clean sections (e.g. Experience, Skills, Education, Projects — whatever the original resume actually has), rewriting each entry to emphasize what's most relevant to the job description, without fabricating anything not present in the original resume.
 2. Write a concise, tailored cover letter (3-4 paragraphs) connecting the candidate's background to the specific role and company context found in the job description.
-Keep the tailored resume in the same overall structure and section order as the original, but reworded and reprioritized for relevance. Preserve factual details (dates, employers, titles, metrics) exactly as given.`;
+Keep sections in the same order as the original resume. Preserve factual details (dates, employers, titles, metrics) exactly as given. Bullets should be short, punchy, achievement-focused lines — not full paragraphs.`;
 
 export function buildTailorUserPrompt(resumeText: string, jobDescription: string): string {
   return `MASTER RESUME:
@@ -17,18 +17,72 @@ ${jobDescription}
 Produce a tailored resume and a cover letter for this job application.`;
 }
 
+const RESUME_ENTRY_SCHEMA = {
+  type: "object",
+  properties: {
+    title: {
+      type: "string",
+      description: "Entry title, e.g. 'Backend Engineer — Acme Corp', or a skills sub-category name.",
+    },
+    subtitle: {
+      type: "string",
+      description: "Dates and/or location for this entry, e.g. '2020 - 2024 · Remote'. Empty string if not applicable.",
+    },
+    bullets: {
+      type: "array",
+      items: { type: "string" },
+      description: "Short bullet points for this entry. For a skills entry, each bullet can just be a skill or a short comma-separated group.",
+    },
+  },
+  required: ["title", "subtitle", "bullets"],
+  additionalProperties: false,
+} as const;
+
+const RESUME_SECTION_SCHEMA = {
+  type: "object",
+  properties: {
+    heading: {
+      type: "string",
+      description: "Section heading, e.g. 'Experience', 'Skills', 'Education', 'Projects'.",
+    },
+    entries: {
+      type: "array",
+      items: RESUME_ENTRY_SCHEMA,
+    },
+  },
+  required: ["heading", "entries"],
+  additionalProperties: false,
+} as const;
+
 export const TAILOR_OUTPUT_SCHEMA = {
   type: "object",
   properties: {
-    tailoredResume: {
+    name: {
       type: "string",
-      description: "The full tailored resume text, formatted with clear section headings and line breaks.",
+      description: "Candidate's full name, taken from the original resume.",
+    },
+    title: {
+      type: "string",
+      description: "A resume headline tailored to the target role, e.g. 'Senior Backend Engineer'. Empty string if the original resume has none.",
+    },
+    contact: {
+      type: "string",
+      description: "A single line of contact info (email, phone, location, links) if present in the original resume, separated by ' · '. Empty string if none found.",
+    },
+    summary: {
+      type: "string",
+      description: "A short 2-3 sentence professional summary tailored to the job. Empty string if the original resume has no summary section and one shouldn't be invented.",
+    },
+    sections: {
+      type: "array",
+      description: "Resume sections in the same order as the original resume.",
+      items: RESUME_SECTION_SCHEMA,
     },
     coverLetter: {
       type: "string",
       description: "The full cover letter text, ready to send.",
     },
   },
-  required: ["tailoredResume", "coverLetter"],
+  required: ["name", "title", "contact", "summary", "sections", "coverLetter"],
   additionalProperties: false,
 } as const;

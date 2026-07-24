@@ -1,6 +1,6 @@
 # Resume Tailor
 
-Upload a master resume (PDF/DOCX/TXT), paste a job description, and get back an AI-tailored resume plus a matching cover letter.
+Upload a master resume (PDF/DOCX/TXT), paste a job description, and get back an AI-tailored resume (downloadable as PDF) plus a matching cover letter.
 
 ## Setup
 
@@ -15,11 +15,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## How it works
 
-- `app/page.tsx` — upload form + results UI
+- `app/page.tsx` — upload form + results UI (Tailwind CSS)
 - `app/api/tailor/route.ts` — handles the upload, extracts resume text, calls the LLM
 - `lib/parseResume.ts` — PDF (`pdf-parse`) / DOCX (`mammoth`) text extraction
 - `lib/llm.ts` — provider abstraction; set `LLM_PROVIDER` to `anthropic` (default), `openai`, or `gemini` in `.env.local`
-- `lib/prompts.ts` — the tailoring prompt + structured output schema
+- `lib/prompts.ts` — the tailoring prompt + structured output schema (name, headline, contact, summary, sections)
+- `lib/resumeText.ts` — flattens the structured resume into plain text for the on-screen preview / copy button
+- `lib/ResumeDocument.tsx` — renders the structured resume as a PDF via `@react-pdf/renderer`
 
 ## Provider config
 
