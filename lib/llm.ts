@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { TAILOR_OUTPUT_SCHEMA } from "./prompts";
 
 export interface TailorResult {
@@ -62,11 +63,34 @@ async function tailorWithOpenAI(system: string, userPrompt: string): Promise<Tai
   return JSON.parse(content) as TailorResult;
 }
 
+async function tailorWithGemini(system: string, userPrompt: string): Promise<TailorResult> {
+  const client = new GoogleGenAI({});
+
+  const response = await client.models.generateContent({
+    model: process.env.GEMINI_MODEL || "gemini-flash-latest",
+    contents: userPrompt,
+    config: {
+      systemInstruction: system,
+      responseMimeType: "application/json",
+      responseJsonSchema: TAILOR_OUTPUT_SCHEMA,
+    },
+  });
+
+  if (!response.text) {
+    throw new Error("No response received from the model.");
+  }
+
+  return JSON.parse(response.text) as TailorResult;
+}
+
 export async function tailorResume(system: string, userPrompt: string): Promise<TailorResult> {
   const provider = process.env.LLM_PROVIDER || "anthropic";
 
   if (provider === "openai") {
     return tailorWithOpenAI(system, userPrompt);
+  }
+  if (provider === "gemini") {
+    return tailorWithGemini(system, userPrompt);
   }
   return tailorWithAnthropic(system, userPrompt);
 }
