@@ -1,7 +1,23 @@
-export const TAILOR_SYSTEM_PROMPT = `You are an expert resume writer and career coach. Given a candidate's master resume and a target job description, you:
+import { localeOutputLanguage, type Locale } from "@/i18n/config";
+
+const BASE_SYSTEM_PROMPT = `You are an expert resume writer and career coach. Given a candidate's master resume and a target job description, you:
 1. Restructure the resume into clean sections (e.g. Experience, Skills, Education, Projects — whatever the original resume actually has), rewriting each entry to emphasize what's most relevant to the job description, without fabricating anything not present in the original resume.
 2. Write a concise, tailored cover letter (3-4 paragraphs) connecting the candidate's background to the specific role and company context found in the job description.
 Keep sections in the same order as the original resume. Preserve factual details (dates, employers, titles, metrics) exactly as given. Bullets should be short, punchy, achievement-focused lines — not full paragraphs.`;
+
+const ARABIC_GUIDANCE = `Write natural, professional Arabic — do not translate word-for-word from English. Keep proper nouns (employer names, product names, universities), technology names, and acronyms in their original Latin script. Write dates and numbers using Western Arabic numerals (0-9).`;
+
+export function buildTailorSystemPrompt(locale: Locale): string {
+  const language = localeOutputLanguage[locale];
+  const lines = [
+    BASE_SYSTEM_PROMPT,
+    `Write every field of your output in ${language}, regardless of the language of the source resume or job description. This includes section headings, entry titles, bullets, the summary, and the cover letter.`,
+  ];
+
+  if (locale === "ar") lines.push(ARABIC_GUIDANCE);
+
+  return lines.join("\n");
+}
 
 export function buildTailorUserPrompt(resumeText: string, jobDescription: string): string {
   return `MASTER RESUME:
