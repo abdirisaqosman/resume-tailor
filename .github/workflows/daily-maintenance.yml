@@ -1,24 +1,50 @@
 name: Daily Maintenance
 
+# Drop-in daily dependency maintenance for any npm repo.
+#
+# Each run updates dependencies within their semver ranges, applies
+# non-breaking security fixes, then gates on lint + build. It pushes only
+# when something genuinely changed — quiet days produce no commit.
+#
+# To reuse this in another repo, copy this file as-is. The only knob is
+# NODE_VERSION below. Lint and build steps are skipped automatically if the
+# repo does not define those scripts.
+
 on:
   schedule:
     - cron: "0 8 * * *" # every day, 08:00 UTC
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run the updates and checks, but do not commit or push"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+# Never let two maintenance runs race to push the same branch.
+concurrency:
+  group: daily-maintenance-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -26,20 +52,47 @@ jobs:
       - name: Update dependencies within semver ranges
         run: npm update
 
+      # `npm audit fix` exits non-zero when vulnerabilities remain that it
+      # cannot fix without a breaking change. That is not a failure of this
+      # job, so swallow the exit code. Note the missing --force: this only
+      # ever applies patches that stay inside the declared semver ranges.
+      - name: Apply non-breaking security fixes
+        run: npm audit fix || true
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency changes today." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Dependency changes"
+              echo ""
+              echo '```diff'
+              git diff --unified=0 -- package.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Everything below is skipped when nothing changed — no point burning
+      # CI minutes re-verifying an unchanged tree.
       - name: Lint
-        run: npm run lint
+        if: steps.changes.outputs.changed == 'true'
+        run: npm run lint --if-present
 
       - name: Build
-        run: npm run build
+        if: steps.changes.outputs.changed == 'true'
+        run: npm run build --if-present
 
-      - name: Commit and push if anything changed
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true' && inputs.dry_run != true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet -- package.json package-lock.json; then
-            git add package.json package-lock.json
-            git commit -m "chore: daily dependency update ($(date -u +%Y-%m-%d))"
-            git push
-          else
-            echo "No dependency changes today — nothing to commit."
-          fi
+          git add package.json package-lock.json
+          git commit -m "chore: daily dependency update ($(date -u +%Y-%m-%d))"
+          # Rebase in case something landed on the branch mid-run.
+          git pull --rebase --autostash origin "${{ github.ref_name }}"
+          git push
