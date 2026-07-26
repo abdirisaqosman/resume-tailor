@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Resume Tailor",
+    "description": "Tailor your resume and generate a cover letter for any job description."
+  },
+  "brand": {
+    "name": "Resume Tailor",
+    "tagline": "AI-tailored resumes & cover letters"
+  },
+  "hero": {
+    "heading": "Tailor your resume in seconds",
+    "subheading": "Upload your resume and a job description — get back a resume rewritten to match, plus a cover letter.",
+    "badge": "Powered by AI"
+  },
+  "form": {
+    "resumeLabel": "Resume",
+    "resumeHint": "PDF, DOCX, or TXT",
+    "dropzoneIdle": "Drop your resume here, or click to browse",
+    "dropzoneActive": "Release to upload",
+    "removeFile": "Remove file",
+    "jobLabel": "Job description",
+    "jobPlaceholder": "Paste the full job posting here...",
+    "jobHint": "The more detail you paste, the better the match.",
+    "submit": "Tailor my resume",
+    "submitting": "Tailoring...",
+    "outputNote": "Results will be written in English."
+  },
+  "errors": {
+    "noResume": "Upload a resume file first.",
+    "noJob": "Paste the job description first.",
+    "generic": "Something went wrong.",
+    "title": "Couldn't tailor your resume",
+    "uploadResume": "Upload a resume file (PDF, DOCX, or TXT).",
+    "pasteJob": "Paste the job description.",
+    "emptyResume": "Could not extract any text from the resume file."
+  },
+  "results": {
+    "resumeTitle": "Tailored Resume",
+    "coverLetterTitle": "Cover Letter",
+    "copy": "Copy",
+    "copied": "Copied",
+    "downloadPdf": "Download PDF",
+    "downloadTxt": "Download .txt",
+    "resumeFileName": "tailored-resume.pdf",
+    "coverLetterFileName": "cover-letter.txt"
+  },
+  "loading": {
+    "title": "Tailoring your resume",
+    "description": "Reading your resume and matching it to the job description."
+  },
+  "footer": {
+    "disclaimer": "Your resume and job description are sent to your configured AI provider to generate results."
+  },
+  "language": {
+    "label": "Language",
+    "switch": "Change language"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}
